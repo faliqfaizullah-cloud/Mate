@@ -79,19 +79,25 @@ suspend fun Context.cameraProvider(): ProcessCameraProvider = suspendCoroutine {
 }
 
 fun loadPhotos(ctx: Context): List<Uri> {
-    val out = mutableListOf<Uri>()
-    val base = MediaStore.Images.Media.EXTERNAL_CONTENT_URI
-    ctx.contentResolver.query(
-        base,
-        arrayOf(MediaStore.Images.Media._ID),
-        "${MediaStore.Images.Media.RELATIVE_PATH} LIKE ?",
-        arrayOf("Pictures/Mate%"),
-        "${MediaStore.Images.Media.DATE_ADDED} DESC",
-    )?.use { c ->
-        val idCol = c.getColumnIndexOrThrow(MediaStore.Images.Media._ID)
-        while (c.moveToNext()) out += ContentUris.withAppendedId(base, c.getLong(idCol))
+    val items = mutableListOf<Pair<Uri, Long>>()
+    fun scan(base: Uri, id: String, date: String, path: String, folder: String) {
+        ctx.contentResolver.query(
+            base, arrayOf(id, date), "$path LIKE ?", arrayOf("$folder%"), "$date DESC"
+        )?.use { c ->
+            val ic = c.getColumnIndexOrThrow(id)
+            val dc = c.getColumnIndexOrThrow(date)
+            while (c.moveToNext()) items += ContentUris.withAppendedId(base, c.getLong(ic)) to c.getLong(dc)
+        }
     }
-    return out
+    scan(
+        MediaStore.Images.Media.EXTERNAL_CONTENT_URI, MediaStore.Images.Media._ID,
+        MediaStore.Images.Media.DATE_ADDED, MediaStore.Images.Media.RELATIVE_PATH, "Pictures/Mate"
+    )
+    scan(
+        MediaStore.Video.Media.EXTERNAL_CONTENT_URI, MediaStore.Video.Media._ID,
+        MediaStore.Video.Media.DATE_ADDED, MediaStore.Video.Media.RELATIVE_PATH, "Movies/Mate"
+    )
+    return items.sortedByDescending { it.second }.map { it.first }
 }
 
 @Composable

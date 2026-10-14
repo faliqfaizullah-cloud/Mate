@@ -11,6 +11,14 @@ A camera app that puts UI, design and feel first. Kotlin + Jetpack Compose + Cam
 - **Collection** (tap the thumbnail): fanned cards, "Most viewed", and a dark sheet you can drag up
   to the "Camera roll" view.
 
+## Camera features
+Tap the **halftone dots** button to open the tools sheet:
+- **Filters** – Original, Vivid, Mono, Noir, Warm, Cool, Fade, Sepia, Punch (live preview, baked into saved photos).
+- **Exposure** – Auto with EV slider, or **Manual ISO + shutter speed**; white balance presets.
+- **Grid** – Off, 3x3, 4x4, Golden ratio, Center cross.
+- **More** – Flash / torch, timer (3s, 10s), video quality (720p / 1080p / 4K), shutter style, flip camera.
+- **Video** – switch PHOTO / VIDEO at the top; tap the shutter to start/stop. Saved to `Movies/Mate`.
+
 ## Gestures
 | Gesture | Action |
 |---|---|
@@ -18,8 +26,8 @@ A camera app that puts UI, design and feel first. Kotlin + Jetpack Compose + Cam
 | Pinch | Zoom |
 | Double-tap preview | Flip camera |
 | Tap pill | Cycle focal length |
-| Tap dots | Change shutter style |
-| Long-press dots | Toggle grid |
+| Tap dots | Open tools sheet |
+| Long-press dots | Change shutter style |
 | Drag dark dock up/down | Expand / collapse camera roll |
 
 ## Haptics
