@@ -46,6 +46,19 @@ class CamSettings {
     var quality by mutableStateOf(VideoQ.FHD)
     var wb by mutableStateOf(Wb.Auto)
 
+    // pro tools
+    var mf by mutableStateOf(false)               // manual focus
+    var focusPos by mutableFloatStateOf(1f)       // 0 = nearest, 1 = infinity
+    var minFocus by mutableFloatStateOf(0f)       // diopters
+    var mfOk by mutableStateOf(false)
+    var level by mutableStateOf(false)
+    var histogram by mutableStateOf(false)
+    var hist by mutableStateOf(FloatArray(32))
+    var aeLock by mutableStateOf(false)
+    var mirror by mutableStateOf(true)
+    var maxQuality by mutableStateOf(false)
+    var jpegQ by mutableIntStateOf(95)
+
     var manual by mutableStateOf(false)
     var iso by mutableIntStateOf(200)
     var shutter by mutableIntStateOf(60) // 1/x s
@@ -134,4 +147,10 @@ suspend fun applyFilter(ctx: Context, uri: Uri, matrix: ColorMatrix) = withConte
         cr.openOutputStream(uri, "wt")?.use { out.compress(Bitmap.CompressFormat.JPEG, 95, it) }
     }
     Unit
+}
+
+fun focusLabel(s: CamSettings): String {
+    if (s.focusPos >= 0.98f || s.minFocus <= 0f) return "∞"
+    val d = (1f - s.focusPos) * s.minFocus
+    return if (d <= 0.01f) "∞" else "%.2f m".format(1f / d)
 }

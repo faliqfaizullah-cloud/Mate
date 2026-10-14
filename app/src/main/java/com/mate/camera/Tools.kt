@@ -47,7 +47,7 @@ fun ToolsSheet(
     h: Haptics,
     modifier: Modifier,
 ) {
-    val tabs = listOf("Filters", "Exposure", "Grid", "More")
+    val tabs = listOf("Filters", "Exposure", "Grid", "Pro", "More")
     Column(
         modifier.clip(RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp)).background(SheetBg)
             .navigationBarsPadding().padding(horizontal = 20.dp).padding(top = 10.dp, bottom = 18.dp)
@@ -72,6 +72,7 @@ fun ToolsSheet(
                 0 -> FiltersTab(s, videoMode, h)
                 1 -> ExposureTab(s, h)
                 2 -> GridTab(s, h)
+                3 -> ProTab(s, h)
                 else -> MoreTab(s, videoMode, recording, style, onStyle, onFlip, h)
             }
         }
@@ -146,6 +147,39 @@ private fun ExposureTab(s: CamSettings, h: Haptics) {
     }
     Label("White balance")
     ChipRow { Wb.entries.forEach { w -> Chip(w.label, s.wb == w) { s.wb = w; h.tick() } } }
+}
+
+@Composable
+private fun ProTab(s: CamSettings, h: Haptics) {
+    Label("Focus")
+    ChipRow {
+        Chip("Auto (AF)", !s.mf) { s.mf = false; h.click() }
+        Chip("Manual (MF)", s.mf) { if (s.mfOk) { s.mf = true; h.click() } else h.double() }
+    }
+    if (!s.mfOk) Text("Manual focus isn't supported on this camera.", Modifier.padding(top = 6.dp), color = Muted, fontSize = 12.sp)
+    if (s.mf && s.mfOk) {
+        Label("Focus distance   ${focusLabel(s)}")
+        Slider(
+            value = s.focusPos,
+            onValueChange = { v ->
+                if ((v * 20).roundToInt() != (s.focusPos * 20).roundToInt()) h.tick()
+                s.focusPos = v
+            },
+            colors = sliderColors(),
+        )
+    }
+    Label("Level (horizon)")
+    ChipRow { Chip("Off", !s.level) { s.level = false; h.tick() }; Chip("On", s.level) { s.level = true; h.click() } }
+    Label("Histogram")
+    ChipRow { Chip("Off", !s.histogram) { s.histogram = false; h.tick() }; Chip("On", s.histogram) { s.histogram = true; h.click() } }
+    Label("Exposure + white balance lock")
+    ChipRow { Chip("Off", !s.aeLock) { s.aeLock = false; h.tick() }; Chip("Locked", s.aeLock) { s.aeLock = true; h.click() } }
+    Label("Mirror selfies")
+    ChipRow { Chip("Off", !s.mirror) { s.mirror = false; h.tick() }; Chip("On", s.mirror) { s.mirror = true; h.tick() } }
+    Label("Capture priority")
+    ChipRow { Chip("Speed", !s.maxQuality) { s.maxQuality = false; h.tick() }; Chip("Quality", s.maxQuality) { s.maxQuality = true; h.tick() } }
+    Label("JPEG quality")
+    ChipRow { listOf(85, 95, 100).forEach { q -> Chip("$q", s.jpegQ == q) { s.jpegQ = q; h.tick() } } }
 }
 
 @Composable

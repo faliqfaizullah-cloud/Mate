@@ -2,6 +2,11 @@ package com.mate.camera
 
 import android.Manifest
 import android.content.ContentValues
+import android.content.Context
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
 import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.graphics.ColorMatrixColorFilter
@@ -24,6 +29,7 @@ import androidx.camera.camera2.interop.ExperimentalCamera2Interop
 import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.FocusMeteringAction
+import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.Preview
@@ -37,6 +43,7 @@ import androidx.camera.video.VideoCapture
 import androidx.camera.video.VideoRecordEvent
 import androidx.camera.view.PreviewView
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
@@ -54,6 +61,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -78,6 +86,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -90,6 +99,10 @@ import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
@@ -101,6 +114,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -110,9 +124,11 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
+import java.util.concurrent.Executors
 import java.util.Date
 import java.util.Locale
 import kotlin.math.abs
+import kotlin.math.atan2
 import kotlin.math.roundToInt
 
 private data class FocusTap(val pos: Offset, val id: Long)
@@ -137,9 +153,19 @@ fun CameraScreen(lastPhoto: Uri?, onSaved: () -> Unit, onOpenCollection: () -> U
             implementationMode = PreviewView.ImplementationMode.COMPATIBLE
         }
     }
-    val imageCapture = remember {
-        ImageCapture.Builder().setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY).build()
+    val imageCapture = remember(s.jpegQ, s.maxQuality) {
+        ImageCapture.Builder()
+            .setCaptureMode(
+                if (s.maxQuality) ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY
+                else ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY
+            )
+            .setJpegQuality(s.jpegQ)
+            .build()
     }
+    val analysis = remember {
+        ImageAnalysis.Builder().setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST).build()
+    }
+    val analysisExecutor = remember { Executors.newSingleThreadExecutor() }
     val recorder = remember(s.quality) {
         Recorder.Builder().setQualitySelector(
             QualitySelector.from(s.quality.q, FallbackStrategy.lowerQualityOrHigherThan(s.quality.q))
@@ -157,6 +183,8 @@ fun CameraScreen(lastPhoto: Uri?, onSaved: () -> Unit, onOpenCollection: () -> U
     var countdownJob by remember { mutableStateOf<Job?>(null) }
     var sheetOpen by remember { mutableStateOf(false) }
     var focus by remember { mutableStateOf<FocusTap?>(null) }
+    var tilt by remember { mutableFloatStateOf(0f) }
+    var flatPhone by remember { mutableStateOf(false) }
     val zoom = remember { Animatable(1f) }
     val flash = remember { Animatable(0f) }
 
@@ -170,13 +198,15 @@ fun CameraScreen(lastPhoto: Uri?, onSaved: () -> Unit, onOpenCollection: () -> U
     fun stamp() = "MATE_" + SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
 
     // ---- bind use cases (photo: preview+image, video: preview+video) --------------------
-    LaunchedEffect(useFront, videoMode, videoCapture) {
+    LaunchedEffect(useFront, videoMode, videoCapture, imageCapture) {
         val provider = ctx.cameraProvider()
         val preview = Preview.Builder().build().also { it.setSurfaceProvider(previewView.surfaceProvider) }
         val selector = if (useFront) CameraSelector.DEFAULT_FRONT_CAMERA else CameraSelector.DEFAULT_BACK_CAMERA
         provider.unbindAll()
-        val cases = if (videoMode) arrayOf<UseCase>(preview, videoCapture) else arrayOf<UseCase>(preview, imageCapture)
-        camera = runCatching { provider.bindToLifecycle(owner, selector, *cases) }.getOrNull()
+        val basic = if (videoMode) arrayOf<UseCase>(preview, videoCapture) else arrayOf<UseCase>(preview, imageCapture)
+        val withAnalysis = if (videoMode) basic else arrayOf<UseCase>(preview, imageCapture, analysis)
+        camera = runCatching { provider.bindToLifecycle(owner, selector, *withAnalysis) }.getOrNull()
+            ?: runCatching { provider.unbindAll(); provider.bindToLifecycle(owner, selector, *basic) }.getOrNull()
         zoom.snapTo(1f)
         camera?.let { c ->
             runCatching {
@@ -192,6 +222,10 @@ fun CameraScreen(lastPhoto: Uri?, onSaved: () -> Unit, onOpenCollection: () -> U
                 val info = Camera2CameraInfo.from(c.cameraInfo)
                 val ir = info.getCameraCharacteristic(CameraCharacteristics.SENSOR_INFO_SENSITIVITY_RANGE)
                 val er = info.getCameraCharacteristic(CameraCharacteristics.SENSOR_INFO_EXPOSURE_TIME_RANGE)
+                val minF = info.getCameraCharacteristic(CameraCharacteristics.LENS_INFO_MINIMUM_FOCUS_DISTANCE)
+                s.minFocus = minF ?: 0f
+                s.mfOk = minF != null && minF > 0f
+                if (!s.mfOk) s.mf = false
                 s.manualOk = ir != null && er != null
                 if (ir != null) { s.isoMin = ir.lower; s.isoMax = ir.upper; s.iso = s.iso.coerceIn(ir.lower, ir.upper) }
                 if (er != null) { s.expMin = er.lower; s.expMax = er.upper }
@@ -216,7 +250,7 @@ fun CameraScreen(lastPhoto: Uri?, onSaved: () -> Unit, onOpenCollection: () -> U
     }
 
     // ---- manual ISO / shutter / white balance via Camera2 interop ---------------------------
-    LaunchedEffect(camera, s.manual, s.iso, s.shutter, s.wb) {
+    LaunchedEffect(camera, s.manual, s.iso, s.shutter, s.wb, s.mf, s.focusPos, s.aeLock) {
         val c = camera ?: return@LaunchedEffect
         runCatching {
             val b = CaptureRequestOptions.Builder()
@@ -227,11 +261,19 @@ fun CameraScreen(lastPhoto: Uri?, onSaved: () -> Unit, onOpenCollection: () -> U
                 val ns = (1_000_000_000L / s.shutter).coerceIn(s.expMin, s.expMax)
                 b.setCaptureRequestOption(CaptureRequest.SENSOR_EXPOSURE_TIME, ns)
             }
+            if (s.mf && s.mfOk) {
+                b.setCaptureRequestOption(CaptureRequest.CONTROL_AF_MODE, CameraMetadata.CONTROL_AF_MODE_OFF)
+                b.setCaptureRequestOption(CaptureRequest.LENS_FOCUS_DISTANCE, (1f - s.focusPos) * s.minFocus)
+            }
+            if (s.aeLock && !s.manual) {
+                b.setCaptureRequestOption(CaptureRequest.CONTROL_AE_LOCK, true)
+                b.setCaptureRequestOption(CaptureRequest.CONTROL_AWB_LOCK, true)
+            }
             Camera2CameraControl.from(c.cameraControl).setCaptureRequestOptions(b.build())
         }
     }
     LaunchedEffect(camera, s.ev) { runCatching { camera?.cameraControl?.setExposureCompensationIndex(s.ev) } }
-    LaunchedEffect(camera, s.flash, videoMode) {
+    LaunchedEffect(camera, s.flash, videoMode, imageCapture) {
         imageCapture.flashMode = when (s.flash) {
             FlashOpt.Off -> ImageCapture.FLASH_MODE_OFF
             FlashOpt.Auto -> ImageCapture.FLASH_MODE_AUTO
@@ -245,7 +287,58 @@ fun CameraScreen(lastPhoto: Uri?, onSaved: () -> Unit, onOpenCollection: () -> U
             while (true) { delay(1000); recSeconds++ }
         }
     }
-    DisposableEffect(Unit) {
+    // histogram analyser
+    DisposableEffect(analysis) {
+        var last = 0L
+        analysis.setAnalyzer(analysisExecutor) { proxy ->
+            val now = System.currentTimeMillis()
+            if (s.histogram && now - last > 200) {
+                last = now
+                runCatching {
+                    val plane = proxy.planes[0]
+                    val buf = plane.buffer
+                    val rs = plane.rowStride
+                    val bins = IntArray(32)
+                    var y = 0
+                    while (y < proxy.height) {
+                        var x = 0
+                        while (x < proxy.width) {
+                            bins[(buf.get(y * rs + x).toInt() and 0xFF) shr 3]++
+                            x += 6
+                        }
+                        y += 6
+                    }
+                    val mx = (bins.maxOrNull() ?: 1).coerceAtLeast(1)
+                    val arr = FloatArray(32) { bins[it] / mx.toFloat() }
+                    previewView.post { s.hist = arr }
+                }
+            }
+            proxy.close()
+        }
+        onDispose { analysis.clearAnalyzer() }
+    }
+    // spirit level
+    DisposableEffect(s.level) {
+        if (!s.level) return@DisposableEffect onDispose { }
+        val sm = ctx.getSystemService(Context.SENSOR_SERVICE) as SensorManager
+        val sensor = sm.getDefaultSensor(Sensor.TYPE_ACCELEROMETER) ?: return@DisposableEffect onDispose { }
+        var wasLevel = false
+        val l = object : SensorEventListener {
+            override fun onSensorChanged(e: SensorEvent) {
+                flatPhone = abs(e.values[2]) > 8.3f
+                val a = Math.toDegrees(atan2(e.values[0].toDouble(), e.values[1].toDouble())).toFloat()
+                val d = a - 90f * Math.round(a / 90f)
+                tilt = tilt * 0.8f + d * 0.2f
+                val lv = abs(tilt) < 1f && !flatPhone
+                if (lv && !wasLevel) h.tick()
+                wasLevel = lv
+            }
+            override fun onAccuracyChanged(sn: Sensor?, acc: Int) {}
+        }
+        sm.registerListener(l, sensor, SensorManager.SENSOR_DELAY_UI)
+        onDispose { sm.unregisterListener(l) }
+    }
+    DisposableEffect(imageCapture) {
         val l = object : OrientationEventListener(ctx) {
             override fun onOrientationChanged(o: Int) {
                 if (o == ORIENTATION_UNKNOWN) return
@@ -270,7 +363,9 @@ fun CameraScreen(lastPhoto: Uri?, onSaved: () -> Unit, onOpenCollection: () -> U
             put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/Mate")
         }
         val opts = ImageCapture.OutputFileOptions
-            .Builder(ctx.contentResolver, MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values).build()
+            .Builder(ctx.contentResolver, MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+            .setMetadata(ImageCapture.Metadata().apply { isReversedHorizontal = useFront && s.mirror })
+            .build()
         val fm = Filters[s.filter].matrix
         scope.launch { flash.snapTo(0.85f); flash.animateTo(0f, tween(240)) }
         imageCapture.takePicture(opts, ContextCompat.getMainExecutor(ctx), object : ImageCapture.OnImageSavedCallback {
@@ -354,7 +449,9 @@ fun CameraScreen(lastPhoto: Uri?, onSaved: () -> Unit, onOpenCollection: () -> U
                             focus = FocusTap(o, System.nanoTime())
                             h.tick()
                             val pt = previewView.meteringPointFactory.createPoint(o.x, o.y)
-                            camera?.cameraControl?.startFocusAndMetering(FocusMeteringAction.Builder(pt).build())
+                            val action = if (s.mf) FocusMeteringAction.Builder(pt, FocusMeteringAction.FLAG_AE).build()
+                            else FocusMeteringAction.Builder(pt).build()
+                            camera?.cameraControl?.startFocusAndMetering(action)
                         },
                         onDoubleTap = { if (recording == null) { h.double(); useFront = !useFront } },
                     )
@@ -389,6 +486,16 @@ fun CameraScreen(lastPhoto: Uri?, onSaved: () -> Unit, onOpenCollection: () -> U
                 }
             }
 
+            if (s.level && !flatPhone) Canvas(Modifier.fillMaxSize()) {
+                val cx = size.width / 2; val cy = size.height / 2; val half = 54.dp.toPx()
+                val col = if (abs(tilt) < 1.2f) Sun else Color.White.copy(alpha = 0.8f)
+                val sw = 2.dp.toPx()
+                rotate(tilt, Offset(cx, cy)) { drawLine(col, Offset(cx - half, cy), Offset(cx + half, cy), sw, StrokeCap.Round) }
+                val edge = col.copy(alpha = 0.5f)
+                drawLine(edge, Offset(cx - half - 36.dp.toPx(), cy), Offset(cx - half - 16.dp.toPx(), cy), sw, StrokeCap.Round)
+                drawLine(edge, Offset(cx + half + 16.dp.toPx(), cy), Offset(cx + half + 36.dp.toPx(), cy), sw, StrokeCap.Round)
+            }
+
             focus?.let { f ->
                 Box(
                     Modifier
@@ -418,6 +525,18 @@ fun CameraScreen(lastPhoto: Uri?, onSaved: () -> Unit, onOpenCollection: () -> U
                 color = Color.White, fontSize = 120.sp, fontWeight = FontWeight.Thin,
             )
 
+            AfPill(
+                s.mf, { if (s.mfOk) { h.double(); s.mf = !s.mf } else h.double() },
+                Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(top = 12.dp, end = 18.dp),
+            )
+            if (s.mf) FocusRuler(
+                s.focusPos, focusLabel(s), { s.focusPos = it }, h,
+                Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 62.dp),
+            )
+            if (s.histogram) Histogram(
+                s.hist, Modifier.align(Alignment.TopStart).statusBarsPadding().padding(start = 18.dp, top = 52.dp)
+            )
+
             val mm = (24 * zoom.value).roundToInt()
             val active = presets().any { abs(it - zoom.value) < 0.02f }
             FocalPill(
@@ -441,7 +560,7 @@ fun CameraScreen(lastPhoto: Uri?, onSaved: () -> Unit, onOpenCollection: () -> U
                 lastPhoto, style,
                 Modifier
                     .align(if (land) Alignment.TopCenter else Alignment.CenterStart)
-                    .padding(if (land) 28.dp else 0.dp).padding(start = if (land) 0.dp else 28.dp)
+                    .padding(if (land) 28.dp else 0.dp).padding(start = if (land) 0.dp else 20.dp)
                     .scale(thumbScale.value)
             ) { h.click(); onOpenCollection() }
             Shutter(
@@ -570,15 +689,81 @@ fun HalftoneButton(color: Color, onClick: () -> Unit, onLong: () -> Unit, modifi
     }
 }
 
+/** Wide, rounded "mini screen" showing the most recent shot, with a dark bezel and soft gloss. */
 @Composable
 fun Thumb(uri: Uri?, style: ShutterStyle, modifier: Modifier, onClick: () -> Unit) {
-    val bmp by rememberThumb(uri, 200, 200)
-    val shape = RoundedCornerShape(16.dp)
+    val bmp by rememberThumb(uri, 400, 300)
     Box(
-        modifier.size(56.dp).clip(shape)
-            .background(if (style.panel == Color.White) Color(0xFFEDEDED) else Color(0xFF262626))
-            .tap(onClick)
+        modifier.size(76.dp, 54.dp).clip(RoundedCornerShape(16.dp))
+            .background(Color(0xFF0B0B0B)).tap(onClick).padding(2.5.dp)
     ) {
-        bmp?.let { Image(it, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
+        Box(Modifier.fillMaxSize().clip(RoundedCornerShape(13.5.dp)).background(Color(0xFF2A2A2A))) {
+            Crossfade(bmp, Modifier.fillMaxSize(), label = "thumb") { b ->
+                if (b != null) Image(b, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+            }
+            Box(
+                Modifier.fillMaxSize().background(
+                    Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.12f), Color.Transparent))
+                )
+            )
+        }
+    }
+}
+
+/** Glowing AF / MF indicator. Tap to switch focus mode. */
+@Composable
+fun AfPill(mf: Boolean, onClick: () -> Unit, modifier: Modifier) {
+    val c = if (mf) Color.White else Sun
+    val shape = RoundedCornerShape(50)
+    Box(
+        modifier.shadow(10.dp, shape, ambientColor = c, spotColor = c).clip(shape)
+            .background(Color.Black.copy(alpha = 0.6f)).border(2.5.dp, c, shape)
+            .tap(onClick).padding(horizontal = 14.dp, vertical = 6.dp)
+    ) {
+        Text(if (mf) "MF" else "AF", color = c, fontSize = 15.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.5.sp)
+    }
+}
+
+/** Manual focus ruler: drag left (near) and right (far). */
+@Composable
+fun FocusRuler(pos: Float, label: String, onChange: (Float) -> Unit, h: Haptics, modifier: Modifier) {
+    val current by rememberUpdatedState(pos)
+    val change by rememberUpdatedState(onChange)
+    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+        Canvas(
+            Modifier.size(230.dp, 34.dp).clip(RoundedCornerShape(50)).background(Color.Black.copy(alpha = 0.42f))
+                .pointerInput(Unit) {
+                    detectHorizontalDragGestures { c, dx ->
+                        c.consume()
+                        val np = (current + dx / size.width * 1.6f).coerceIn(0f, 1f)
+                        if ((np * 20).roundToInt() != (current * 20).roundToInt()) h.tick()
+                        change(np)
+                    }
+                }
+        ) {
+            val pad = 16.dp.toPx()
+            val w = size.width - pad * 2
+            for (i in 0..20) {
+                val x = pad + w * i / 20f
+                val major = i % 5 == 0
+                val th = if (major) 14.dp.toPx() else 8.dp.toPx()
+                drawLine(Color.White.copy(alpha = 0.45f), Offset(x, size.height / 2 - th / 2), Offset(x, size.height / 2 + th / 2), 1.5.dp.toPx(), StrokeCap.Round)
+            }
+            val px = pad + w * pos
+            drawLine(Color.White, Offset(px, size.height / 2 - 11.dp.toPx()), Offset(px, size.height / 2 + 11.dp.toPx()), 3.dp.toPx(), StrokeCap.Round)
+        }
+        Text(label, Modifier.padding(top = 4.dp), color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+    }
+}
+
+@Composable
+fun Histogram(bins: FloatArray, modifier: Modifier) {
+    Canvas(modifier.size(100.dp, 46.dp).clip(RoundedCornerShape(10.dp)).background(Color.Black.copy(alpha = 0.42f))) {
+        val n = bins.size
+        val bw = size.width / n
+        bins.forEachIndexed { i, v ->
+            val bh = v * size.height * 0.88f
+            drawRect(Color.White.copy(alpha = 0.85f), Offset(i * bw + 0.5f, size.height - bh), Size((bw - 1f).coerceAtLeast(0.5f), bh))
+        }
     }
 }

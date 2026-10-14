@@ -19,6 +19,15 @@ Tap the **halftone dots** button to open the tools sheet:
 - **More** – Flash / torch, timer (3s, 10s), video quality (720p / 1080p / 4K), shutter style, flip camera.
 - **Video** – switch PHOTO / VIDEO at the top; tap the shutter to start/stop. Saved to `Movies/Mate`.
 
+## Pro tools
+- **Recent-shot thumbnail**: wide rounded "mini screen" with a dark bezel and gloss; crossfades to each new shot.
+- **AF / MF pill** (top right, glowing yellow in AF): tap to switch to manual focus. In MF a **focus ruler** appears;
+  drag left = near, right = far (haptic detent on every tick). Also available as a slider in *Pro*.
+- **Level**: spirit-level line that turns yellow and ticks when the horizon is straight.
+- **Histogram**: live luminance histogram.
+- **Exposure + white-balance lock**, **mirror selfies**, **capture priority** (speed / quality), **JPEG quality** (85 / 95 / 100).
+  All in the tools sheet under **Pro**.
+
 ## Gallery viewer & editor
 Tap any card in the collection carousel (or the "Most viewed" image) to open it full-screen.
 - Swipe between photos, **pinch** or **double-tap** to zoom, pan when zoomed, tap to hide the controls.
