@@ -172,15 +172,15 @@ private fun MoreTab(
 }
 
 @Composable
-private fun Label(text: String) =
+fun Label(text: String) =
     Text(text, Modifier.padding(top = 16.dp, bottom = 8.dp), color = Muted, fontSize = 13.sp, fontWeight = FontWeight.Medium)
 
 @Composable
-private fun ChipRow(content: @Composable () -> Unit) =
+fun ChipRow(content: @Composable () -> Unit) =
     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) { content() }
 
 @Composable
-private fun Chip(label: String, selected: Boolean, onClick: () -> Unit) {
+fun Chip(label: String, selected: Boolean, onClick: () -> Unit) {
     Box(
         Modifier.clip(RoundedCornerShape(50)).background(if (selected) Mint else Color(0xFF2C2C2E))
             .tap(onClick).padding(horizontal = 16.dp, vertical = 9.dp)
@@ -190,7 +190,7 @@ private fun Chip(label: String, selected: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-private fun sliderColors() = SliderDefaults.colors(
+fun sliderColors() = SliderDefaults.colors(
     thumbColor = Mint, activeTrackColor = Mint, inactiveTrackColor = Color(0xFF3A3A3C),
     activeTickColor = Color.Transparent, inactiveTickColor = Color.Transparent,
 )

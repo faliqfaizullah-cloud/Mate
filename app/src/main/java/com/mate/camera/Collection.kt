@@ -60,7 +60,7 @@ private val Placeholders = listOf(
 )
 
 @Composable
-fun CollectionScreen(photos: List<Uri>, onClose: () -> Unit) {
+fun CollectionScreen(photos: List<Uri>, onClose: () -> Unit, onRefresh: () -> Unit) {
     val ctx = LocalContext.current
     val view = LocalView.current
     val h = remember(view) { Haptics(ctx, view) }
@@ -69,6 +69,7 @@ fun CollectionScreen(photos: List<Uri>, onClose: () -> Unit) {
     var expanded by remember { mutableStateOf(false) }
     var byViews by remember { mutableStateOf(false) }
     var viewsTick by remember { mutableIntStateOf(0) }
+    var viewer by remember { mutableStateOf<Int?>(null) }
     var order by remember(photos) { mutableStateOf(photos) }
 
     fun views(u: Uri) = prefs.getInt("v_$u", 0)
@@ -78,6 +79,7 @@ fun CollectionScreen(photos: List<Uri>, onClose: () -> Unit) {
         order = listOf(u) + order.filterNot { it == u }
         viewsTick++
         h.tick()
+        viewer = photos.indexOf(u).takeIf { it >= 0 }
     }
 
     val shown = if (byViews) order.sortedByDescending { views(it) } else order
@@ -126,7 +128,10 @@ fun CollectionScreen(photos: List<Uri>, onClose: () -> Unit) {
                         Text("Most viewed", color = Ink, fontSize = 15.sp, fontWeight = FontWeight.Medium)
                         Text("${top?.let { views(it) } ?: 0} views", color = Color(0xFF8E8E93), fontSize = 15.sp)
                     }
-                    Box(Modifier.fillMaxWidth().height(150.dp).clip(RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp))) {
+                    Box(
+                        Modifier.fillMaxWidth().height(150.dp).clip(RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp))
+                            .tap { top?.let { u -> h.click(); viewer = photos.indexOf(u).takeIf { it >= 0 } } }
+                    ) {
                         ThumbOrPlaceholder(top, 1, Modifier.fillMaxSize(), ContentScale.Crop, 1000, 600)
                     }
                 }
@@ -171,6 +176,10 @@ fun CollectionScreen(photos: List<Uri>, onClose: () -> Unit) {
                         .tap { expanded = !expanded; h.click() }
                 )
             }
+        }
+
+        viewer?.let { idx ->
+            PhotoViewer(photos, idx, onClose = { viewer = null }, onChanged = onRefresh)
         }
     }
 }

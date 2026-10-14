@@ -66,7 +66,7 @@ class Filter(val name: String, val matrix: ColorMatrix?)
 
 private fun cm(vararg v: Float) = ColorMatrix(floatArrayOf(*v))
 
-private fun contrast(c: Float, lift: Float = 0f): ColorMatrix {
+internal fun contrast(c: Float, lift: Float = 0f): ColorMatrix {
     val t = (-0.5f * c + 0.5f) * 255f + lift
     return cm(
         c, 0f, 0f, 0f, t,

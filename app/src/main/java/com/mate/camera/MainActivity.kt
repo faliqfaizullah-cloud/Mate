@@ -134,7 +134,7 @@ fun MateApp() {
             visible = showCollection,
             enter = slideInVertically(tween(420)) { it },
             exit = slideOutVertically(tween(320)) { it },
-        ) { CollectionScreen(photos) { showCollection = false } }
+        ) { CollectionScreen(photos, { showCollection = false }, { photos = loadPhotos(ctx) }) }
     }
     BackHandler(showCollection) { showCollection = false }
 }

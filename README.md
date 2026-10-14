@@ -19,6 +19,13 @@ Tap the **halftone dots** button to open the tools sheet:
 - **More** – Flash / torch, timer (3s, 10s), video quality (720p / 1080p / 4K), shutter style, flip camera.
 - **Video** – switch PHOTO / VIDEO at the top; tap the shutter to start/stop. Saved to `Movies/Mate`.
 
+## Gallery viewer & editor
+Tap any card in the collection carousel (or the "Most viewed" image) to open it full-screen.
+- Swipe between photos, **pinch** or **double-tap** to zoom, pan when zoomed, tap to hide the controls.
+- **Share** from the top bar. Videos show a play button and open in your player.
+- **Edit**: Filters, Adjust (brightness, contrast, saturation, warmth), Crop (rotate, flip, 1:1 / 4:3 / 3:4 / 16:9 / 9:16).
+  Press and hold the preview to compare with the original. **Save copy** keeps the original untouched.
+
 ## Gestures
 | Gesture | Action |
 |---|---|
