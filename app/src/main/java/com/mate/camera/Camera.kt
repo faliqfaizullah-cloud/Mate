@@ -101,6 +101,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.ImageShader
+import androidx.compose.ui.graphics.ShaderBrush
+import androidx.compose.ui.graphics.TileMode
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.geometry.Offset
@@ -240,9 +244,11 @@ fun CameraScreen(lastPhoto: Uri?, onSaved: () -> Unit, onOpenCollection: () -> U
         }
     }
 
-    // ---- live filter on the preview ---------------------------------------------------
-    LaunchedEffect(s.filter) {
-        val m = Filters[s.filter].matrix
+    // ---- live filter + style on the preview ---------------------------------------------
+    val effStyle = if (s.styleOpen) s.draft else s.applied
+    val effSig = effStyle.sig()
+    LaunchedEffect(s.filter, effSig) {
+        val m = combined(s.filter, effStyle)
         if (m == null) previewView.setLayerType(View.LAYER_TYPE_NONE, null)
         else previewView.setLayerType(
             View.LAYER_TYPE_HARDWARE, Paint().apply { colorFilter = ColorMatrixColorFilter(m) }
@@ -354,6 +360,7 @@ fun CameraScreen(lastPhoto: Uri?, onSaved: () -> Unit, onOpenCollection: () -> U
         onDispose { l.disable() }
     }
     BackHandler(sheetOpen) { sheetOpen = false }
+    BackHandler(s.styleOpen) { s.draft.copyFrom(s.applied); s.styleOpen = false }
 
     // ---- actions ----------------------------------------------------------------------
     fun capture() {
@@ -366,13 +373,16 @@ fun CameraScreen(lastPhoto: Uri?, onSaved: () -> Unit, onOpenCollection: () -> U
             .Builder(ctx.contentResolver, MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
             .setMetadata(ImageCapture.Metadata().apply { isReversedHorizontal = useFront && s.mirror })
             .build()
-        val fm = Filters[s.filter].matrix
+        val st = s.applied
+        val fm = combined(s.filter, st)
+        val gr = st.grain
+        val sf = st.soft
         scope.launch { flash.snapTo(0.85f); flash.animateTo(0f, tween(240)) }
         imageCapture.takePicture(opts, ContextCompat.getMainExecutor(ctx), object : ImageCapture.OnImageSavedCallback {
             override fun onImageSaved(r: ImageCapture.OutputFileResults) {
                 h.confirm()
                 val u = r.savedUri
-                if (fm != null && u != null) scope.launch { applyFilter(ctx, u, fm); onSaved() } else onSaved()
+                if (u != null && (fm != null || gr > 0f || sf > 0f)) scope.launch { applyStyle(ctx, u, fm, gr, sf); onSaved() } else onSaved()
             }
             override fun onError(e: ImageCaptureException) { h.double() }
         })
@@ -425,7 +435,9 @@ fun CameraScreen(lastPhoto: Uri?, onSaved: () -> Unit, onOpenCollection: () -> U
         scope.launch { zoom.animateTo(next, tween(380)); h.tick() }
     }
 
-    val panelColor by animateColorAsState(style.panel, tween(300), label = "panel")
+    val panelColor by animateColorAsState(if (s.styleOpen) Color(0xFF0E0E0E) else style.panel, tween(300), label = "panel")
+    val noiseShader = remember { ImageShader(makeNoise().asImageBitmap(), TileMode.Repeated, TileMode.Repeated) }
+    fun openStyle() { s.draft.copyFrom(s.applied); s.styleOpen = true; sheetOpen = false }
 
     // ---- UI -------------------------------------------------------------------------
     @Composable
@@ -467,6 +479,10 @@ fun CameraScreen(lastPhoto: Uri?, onSaved: () -> Unit, onOpenCollection: () -> U
                 }
         ) {
             AndroidView({ previewView }, Modifier.fillMaxSize())
+
+            if (effStyle.grain > 0f) Canvas(Modifier.fillMaxSize()) {
+                drawRect(ShaderBrush(noiseShader), alpha = effStyle.grain * 0.35f)
+            }
 
             if (s.grid != GridType.Off) Canvas(Modifier.fillMaxSize()) {
                 val c = Color.White.copy(alpha = 0.38f)
@@ -514,6 +530,7 @@ fun CameraScreen(lastPhoto: Uri?, onSaved: () -> Unit, onOpenCollection: () -> U
             // HUD
             val hud = buildList {
                 if (s.filter != 0) add(Filters[s.filter].name)
+                if (s.applied.active) add("Style")
                 if (s.manual) add("ISO ${s.iso} · 1/${s.shutter}")
             }.joinToString("  ·  ")
             if (hud.isNotEmpty()) Text(
@@ -583,12 +600,14 @@ fun CameraScreen(lastPhoto: Uri?, onSaved: () -> Unit, onOpenCollection: () -> U
         if (!land) {
             Column(Modifier.fillMaxSize().background(panelColor)) {
                 Viewfinder(Modifier.weight(1f).fillMaxWidth())
-                Controls(Modifier.fillMaxWidth().background(panelColor).navigationBarsPadding().height(168.dp))
+                if (s.styleOpen) StylePanel(s.draft, s.applied, { s.styleOpen = false }, h, Modifier.fillMaxWidth().height(340.dp))
+                else Controls(Modifier.fillMaxWidth().background(panelColor).navigationBarsPadding().height(168.dp))
             }
         } else {
             Row(Modifier.fillMaxSize().background(panelColor)) {
                 Viewfinder(Modifier.weight(1f).fillMaxHeight())
-                Controls(Modifier.fillMaxHeight().background(panelColor).navigationBarsPadding().width(140.dp))
+                if (s.styleOpen) StylePanel(s.draft, s.applied, { s.styleOpen = false }, h, Modifier.fillMaxHeight().width(340.dp))
+                else Controls(Modifier.fillMaxHeight().background(panelColor).navigationBarsPadding().width(140.dp))
             }
         }
         AnimatedVisibility(sheetOpen, enter = fadeIn(), exit = fadeOut()) {
@@ -604,6 +623,7 @@ fun CameraScreen(lastPhoto: Uri?, onSaved: () -> Unit, onOpenCollection: () -> U
                 s, videoMode, recording != null, style,
                 onStyle = { style = it; h.double() },
                 onFlip = { if (recording == null) { h.double(); useFront = !useFront } },
+                onOpenStyle = { h.click(); openStyle() },
                 h = h,
                 modifier = Modifier.fillMaxWidth().widthIn(max = 520.dp),
             )

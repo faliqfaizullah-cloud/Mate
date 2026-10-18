@@ -44,6 +44,7 @@ fun ToolsSheet(
     style: ShutterStyle,
     onStyle: (ShutterStyle) -> Unit,
     onFlip: () -> Unit,
+    onOpenStyle: () -> Unit,
     h: Haptics,
     modifier: Modifier,
 ) {
@@ -69,7 +70,7 @@ fun ToolsSheet(
         }
         Column(Modifier.heightIn(max = 300.dp).verticalScroll(rememberScrollState())) {
             when (s.tab) {
-                0 -> FiltersTab(s, videoMode, h)
+                0 -> FiltersTab(s, videoMode, onOpenStyle, h)
                 1 -> ExposureTab(s, h)
                 2 -> GridTab(s, h)
                 3 -> ProTab(s, h)
@@ -80,7 +81,13 @@ fun ToolsSheet(
 }
 
 @Composable
-private fun FiltersTab(s: CamSettings, videoMode: Boolean, h: Haptics) {
+private fun FiltersTab(s: CamSettings, videoMode: Boolean, onOpenStyle: () -> Unit, h: Haptics) {
+    Label("Photographic style")
+    ChipRow {
+        Chip(if (s.applied.active) "Style on · edit" else "Open style editor", s.applied.active) { onOpenStyle() }
+        if (s.applied.active) Chip("Reset style", false) { s.applied.reset(); h.double() }
+    }
+    Label("Filters")
     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         Filters.forEachIndexed { i, f ->
             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.tap { s.filter = i; h.tick() }) {

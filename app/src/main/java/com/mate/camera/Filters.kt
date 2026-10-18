@@ -46,6 +46,11 @@ class CamSettings {
     var quality by mutableStateOf(VideoQ.FHD)
     var wb by mutableStateOf(Wb.Auto)
 
+    // photographic style (applied = committed, draft = being edited)
+    val applied = StyleState()
+    val draft = StyleState()
+    var styleOpen by mutableStateOf(false)
+
     // pro tools
     var mf by mutableStateOf(false)               // manual focus
     var focusPos by mutableFloatStateOf(1f)       // 0 = nearest, 1 = infinity
@@ -77,7 +82,7 @@ class CamSettings {
 
 class Filter(val name: String, val matrix: ColorMatrix?)
 
-private fun cm(vararg v: Float) = ColorMatrix(floatArrayOf(*v))
+internal fun cm(vararg v: Float) = ColorMatrix(floatArrayOf(*v))
 
 internal fun contrast(c: Float, lift: Float = 0f): ColorMatrix {
     val t = (-0.5f * c + 0.5f) * 255f + lift
@@ -89,7 +94,7 @@ internal fun contrast(c: Float, lift: Float = 0f): ColorMatrix {
     )
 }
 
-private fun sat(s: Float, then: ColorMatrix? = null) =
+internal fun sat(s: Float, then: ColorMatrix? = null) =
     ColorMatrix().apply { setSaturation(s); if (then != null) postConcat(then) }
 
 val Filters = listOf(

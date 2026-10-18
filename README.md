@@ -19,6 +19,15 @@ Tap the **halftone dots** button to open the tools sheet:
 - **More** – Flash / torch, timer (3s, 10s), video quality (720p / 1080p / 4K), shutter style, flip camera.
 - **Video** – switch PHOTO / VIDEO at the top; tap the shutter to start/stop. Saved to `Movies/Mate`.
 
+## Photographic Style editor
+Tools sheet → **Filters** → *Open style editor*. A dark panel slides up under the live preview:
+- **NUANCE**: drag the dot-grid pad (horizontal = cool ↔ warm, vertical = deeper ↔ brighter; the dots swell around your finger)
+  and use the pill slider for intensity. **Swipe** the pad area to flip through styles
+  (Standard, Rich Contrast, Vibrant, Cool, Muted) as a stacked deck. Double-tap the pad to re-centre.
+- **MATERIAL**: Standard, Soft Skin, Film, Grain. Tap one to get a tick slider with a percentage; active materials show yellow level ticks.
+- **?** hint, **reset** arrow, **✕** cancel, **✓** apply. The style shows live and is baked into saved photos
+  (colour, soft-skin softening and film grain). Video records unstyled.
+
 ## Pro tools
 - **Recent-shot thumbnail**: wide rounded "mini screen" with a dark bezel and gloss; crossfades to each new shot.
 - **AF / MF pill** (top right, glowing yellow in AF): tap to switch to manual focus. In MF a **focus ruler** appears;
