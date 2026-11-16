@@ -19,6 +19,13 @@ Tap the **halftone dots** button to open the tools sheet:
 - **More** – Flash / torch, timer (3s, 10s), video quality (720p / 1080p / 4K), shutter style, flip camera.
 - **Video** – switch PHOTO / VIDEO at the top; tap the shutter to start/stop. Saved to `Movies/Mate`.
 
+## In-app updates
+Mate checks your GitHub Releases on launch (a small "↑ vX.Y.Z" pill appears when a new version is out) and under
+**Tools → More → App updates**. Tap **Update now**: it downloads the APK and Android installs it over the existing app,
+keeping your photos and settings. Every build is signed with the same key (`app/mate-release.keystore`), which is what lets
+Android accept it as an update. To ship an update: bump `versionCode` and `versionName` in `app/build.gradle.kts`,
+push, then tag `vX.Y.Z` (the tag must match `versionName`). Repo used: `UPDATE_REPO` in `Update.kt` (must be public).
+
 ## Burst mode
 **Hold** the shutter, or **slide it left** and keep your finger down, to shoot a true full-resolution burst.
 The shutter shows a live frame counter, the phone ticks as frames fire, and a heavy thunk marks the end.

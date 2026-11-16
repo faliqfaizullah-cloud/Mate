@@ -13,13 +13,23 @@ android {
         applicationId = "com.mate.camera"
         minSdk = 29
         targetSdk = 34
-        versionCode = 9
-        versionName = "1.5.1"
+        versionCode = 10
+        versionName = "1.6.0"
     }
 
+    signingConfigs {
+        create("mate") {
+            storeFile = file("mate-release.keystore")
+            storePassword = "matecamera"
+            keyAlias = "mate"
+            keyPassword = "matecamera"
+        }
+    }
     buildTypes {
+        debug { signingConfig = signingConfigs.getByName("mate") }
         release {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("mate")
         }
     }
     compileOptions {

@@ -45,6 +45,8 @@ fun ToolsSheet(
     onStyle: (ShutterStyle) -> Unit,
     onFlip: () -> Unit,
     onOpenStyle: () -> Unit,
+    update: UpdateState,
+    onCheckUpdate: () -> Unit,
     h: Haptics,
     modifier: Modifier,
 ) {
@@ -74,7 +76,7 @@ fun ToolsSheet(
                 1 -> ExposureTab(s, h)
                 2 -> GridTab(s, h)
                 3 -> ProTab(s, h)
-                else -> MoreTab(s, videoMode, recording, style, onStyle, onFlip, h)
+                else -> MoreTab(s, videoMode, recording, style, onStyle, onFlip, update, onCheckUpdate, h)
             }
         }
     }
@@ -202,8 +204,9 @@ private fun GridTab(s: CamSettings, h: Haptics) {
 @Composable
 private fun MoreTab(
     s: CamSettings, videoMode: Boolean, recording: Boolean, style: ShutterStyle,
-    onStyle: (ShutterStyle) -> Unit, onFlip: () -> Unit, h: Haptics,
+    onStyle: (ShutterStyle) -> Unit, onFlip: () -> Unit, update: UpdateState, onCheckUpdate: () -> Unit, h: Haptics,
 ) {
+    val ctx = androidx.compose.ui.platform.LocalContext.current
     Label(if (videoMode) "Torch" else "Flash")
     ChipRow { FlashOpt.entries.forEach { f -> Chip(f.label, s.flash == f) { s.flash = f; h.tick() } } }
     Label("Timer")
@@ -214,6 +217,12 @@ private fun MoreTab(
     ChipRow { ShutterStyle.entries.forEach { st -> Chip(st.name.lowercase().replaceFirstChar { it.uppercase() }, style == st) { onStyle(st) } } }
     Label("Camera")
     ChipRow { Chip("Flip camera", false) { onFlip() } }
+    Label("App updates")
+    ChipRow {
+        Chip(if (update.phase == Phase.Checking) "Checking…" else "Check for updates", false) { onCheckUpdate() }
+        if (update.phase == Phase.Available) Chip("Update ${update.info?.version ?: ""}", true) { h.click(); update.dialog = true }
+    }
+    Text(updateStatusText(ctx, update), Modifier.padding(top = 8.dp), color = Muted, fontSize = 12.sp)
 }
 
 @Composable

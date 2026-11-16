@@ -160,6 +160,8 @@ fun CameraScreen(lastPhoto: Uri?, onSaved: () -> Unit, onOpenCollection: () -> U
     val land = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
 
     val s = remember { CamSettings() }
+    val upd = remember { UpdateState() }
+    LaunchedEffect(Unit) { upd.check(ctx, silent = true) }
     val previewView = remember {
         PreviewView(ctx).apply {
             scaleType = PreviewView.ScaleType.FILL_CENTER
@@ -619,6 +621,10 @@ fun CameraScreen(lastPhoto: Uri?, onSaved: () -> Unit, onOpenCollection: () -> U
                 s.mf, { if (s.mfOk) { h.double(); s.mf = !s.mf } else h.double() },
                 Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(top = 12.dp, end = 18.dp),
             )
+            if (upd.phase == Phase.Available && !upd.dialog) UpdatePill(
+                upd.info?.version ?: "update", { h.click(); upd.dialog = true },
+                Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(top = 54.dp, end = 18.dp),
+            )
             if (s.mf) FocusRuler(
                 s.focusPos, focusLabel(s), { s.focusPos = it }, h,
                 Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 62.dp),
@@ -697,10 +703,13 @@ fun CameraScreen(lastPhoto: Uri?, onSaved: () -> Unit, onOpenCollection: () -> U
                 onStyle = { style = it; h.double() },
                 onFlip = { if (recording == null) { h.double(); useFront = !useFront } },
                 onOpenStyle = { h.click(); openStyle() },
+                update = upd,
+                onCheckUpdate = { h.click(); scope.launch { upd.check(ctx, silent = false) } },
                 h = h,
                 modifier = Modifier.fillMaxWidth().widthIn(max = 520.dp),
             )
         }
+        if (upd.dialog) UpdateDialog(upd, h)
     }
 }
 
