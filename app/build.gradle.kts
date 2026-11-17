@@ -13,8 +13,8 @@ android {
         applicationId = "com.mate.camera"
         minSdk = 29
         targetSdk = 34
-        versionCode = 12
-        versionName = "1.6.2"
+        versionCode = 13
+        versionName = "1.6.3"
     }
 
     signingConfigs {

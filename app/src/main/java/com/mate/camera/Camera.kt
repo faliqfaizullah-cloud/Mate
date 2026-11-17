@@ -687,13 +687,22 @@ fun CameraScreen(lastPhoto: Uri?, onSaved: () -> Unit, onOpenCollection: () -> U
     Box(Modifier.fillMaxSize()) {
         if (!land) {
             Column(Modifier.fillMaxSize().background(panelColor)) {
-                Viewfinder(Modifier.weight(1f).fillMaxWidth())
+                // rounded viewfinder: black shows through the top corners, the panel colour through the bottom ones
+                Box(
+                    Modifier.weight(1f).fillMaxWidth().background(
+                        Brush.verticalGradient(0f to Color.Black, 0.5f to Color.Black, 0.5f to panelColor, 1f to panelColor)
+                    )
+                ) { Viewfinder(Modifier.fillMaxSize().clip(RoundedCornerShape(28.dp))) }
                 if (s.styleOpen) StylePanel(s.draft, s.applied, { s.styleOpen = false }, h, Modifier.fillMaxWidth().height(340.dp))
                 else Controls(Modifier.fillMaxWidth().background(panelColor).navigationBarsPadding().height(168.dp))
             }
         } else {
             Row(Modifier.fillMaxSize().background(panelColor)) {
-                Viewfinder(Modifier.weight(1f).fillMaxHeight())
+                Box(
+                    Modifier.weight(1f).fillMaxHeight().background(
+                        Brush.horizontalGradient(0f to Color.Black, 0.5f to Color.Black, 0.5f to panelColor, 1f to panelColor)
+                    )
+                ) { Viewfinder(Modifier.fillMaxSize().clip(RoundedCornerShape(28.dp))) }
                 if (s.styleOpen) StylePanel(s.draft, s.applied, { s.styleOpen = false }, h, Modifier.fillMaxHeight().width(340.dp))
                 else Controls(Modifier.fillMaxHeight().background(panelColor).navigationBarsPadding().width(140.dp))
             }
