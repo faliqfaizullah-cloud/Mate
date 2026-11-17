@@ -197,7 +197,7 @@ fun UpdateDialog(u: UpdateState, h: Haptics) {
         contentAlignment = Alignment.Center,
     ) {
         Column(
-            Modifier.padding(28.dp).clip(RoundedCornerShape(28.dp)).background(Color(0xFF1C1C1E)).padding(22.dp)
+            Modifier.padding(28.dp).acrylic(RoundedCornerShape(28.dp), Color(0xFF1C1C1E), 0.80f).padding(22.dp)
                 .tap { },
         ) {
             Text("Update available", color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.SemiBold)
@@ -223,7 +223,7 @@ fun UpdateDialog(u: UpdateState, h: Haptics) {
             )
             Row(Modifier.fillMaxWidth().padding(top = 20.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Box(
-                    Modifier.weight(1f).clip(RoundedCornerShape(50)).background(Color(0xFF2C2C2E))
+                    Modifier.weight(1f).acrylic(RoundedCornerShape(50), Color.White, 0.14f)
                         .tap { if (!busy) { h.click(); u.dialog = false } }.padding(vertical = 13.dp),
                     contentAlignment = Alignment.Center,
                 ) { Text("Later", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold) }
@@ -251,7 +251,7 @@ fun UpdateDialog(u: UpdateState, h: Haptics) {
 fun UpdatePill(version: String, onClick: () -> Unit, modifier: Modifier) {
     val shape = RoundedCornerShape(50)
     Box(
-        modifier.clip(shape).background(Color.Black.copy(alpha = 0.55f)).tap(onClick)
+        modifier.acrylic(shape, Color.Black, 0.55f).tap(onClick)
             .padding(horizontal = 12.dp, vertical = 6.dp)
     ) {
         Text("↑ $version", color = Sun, fontSize = 12.sp, fontWeight = FontWeight.Bold)

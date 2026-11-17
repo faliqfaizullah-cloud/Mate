@@ -127,7 +127,7 @@ fun PhotoViewer(photos: List<Uri>, startIndex: Int, onClose: () -> Unit, onChang
                 horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically,
             ) {
                 Box(
-                    Modifier.size(40.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.16f))
+                    Modifier.size(40.dp).acrylic(CircleShape, Color.White, 0.14f)
                         .tap { h.click(); onClose() },
                     contentAlignment = Alignment.Center,
                 ) {
@@ -190,7 +190,7 @@ fun PhotoViewer(photos: List<Uri>, startIndex: Int, onClose: () -> Unit, onChang
 @Composable
 private fun GlassPill(label: String, onClick: () -> Unit) {
     Box(
-        Modifier.clip(RoundedCornerShape(50)).background(Color.White.copy(alpha = 0.16f))
+        Modifier.acrylic(RoundedCornerShape(50), Color.White, 0.14f)
             .tap(onClick).padding(horizontal = 18.dp, vertical = 10.dp)
     ) { Text(label, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Medium) }
 }

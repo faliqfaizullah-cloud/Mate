@@ -19,6 +19,11 @@ Tap the **halftone dots** button to open the tools sheet:
 - **More** – Flash / torch, timer (3s, 10s), video quality (720p / 1080p / 4K), shutter style, flip camera.
 - **Video** – switch PHOTO / VIDEO at the top; tap the shutter to start/stop. Saved to `Movies/Mate`.
 
+## Acrylic UI
+Glass surfaces use one shared `Modifier.acrylic(...)` (`Acrylic.kt`): translucent tint, soft luminosity wash, fine grain and a
+light top-left edge. Applied to the focal / mode / AF / recording pills, focus ruler, histogram, tools sheet and its chips,
+update card, viewer controls, editor panel and burst dialogs. On Android 12+ the live preview also blurs behind the update card.
+
 ## In-app updates
 Mate checks your GitHub Releases on launch (a small "↑ vX.Y.Z" pill appears when a new version is out) and under
 **Tools → More → App updates**. Tap **Update now**: it downloads the APK and Android installs it over the existing app,

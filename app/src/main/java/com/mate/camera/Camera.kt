@@ -11,6 +11,9 @@ import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.graphics.ColorMatrixColorFilter
 import android.graphics.Paint
+import android.graphics.RenderEffect
+import android.graphics.Shader
+import android.os.Build
 import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraMetadata
 import android.hardware.camera2.CaptureRequest
@@ -511,6 +514,12 @@ fun CameraScreen(lastPhoto: Uri?, onSaved: () -> Unit, onOpenCollection: () -> U
     }
 
     val panelColor by animateColorAsState(if (s.styleOpen) Color(0xFF0E0E0E) else style.panel, tween(300), label = "panel")
+    val dialogBlur by animateFloatAsState(if (upd.dialog) 24f else 0f, tween(300), label = "blur")
+    LaunchedEffect(dialogBlur) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) previewView.setRenderEffect(
+            if (dialogBlur > 0.5f) RenderEffect.createBlurEffect(dialogBlur, dialogBlur, Shader.TileMode.CLAMP) else null
+        )
+    }
     val noiseShader = remember { ImageShader(makeNoise().asImageBitmap(), TileMode.Repeated, TileMode.Repeated) }
     fun openStyle() { s.draft.copyFrom(s.applied); s.styleOpen = true; sheetOpen = false }
 
@@ -717,8 +726,7 @@ fun CameraScreen(lastPhoto: Uri?, onSaved: () -> Unit, onOpenCollection: () -> U
 fun FocalPill(mm: Int, active: Boolean, onClick: () -> Unit, modifier: Modifier) {
     val shape = RoundedCornerShape(50)
     Box(
-        modifier.clip(shape).background(Color.Black.copy(alpha = 0.42f))
-            .border(0.5.dp, Color.White.copy(alpha = 0.14f), shape).tap(onClick)
+        modifier.acrylic(shape, Color.Black, 0.45f).tap(onClick)
     ) {
         Text(
             "${mm}mm",
@@ -854,8 +862,8 @@ fun AfPill(mf: Boolean, onClick: () -> Unit, modifier: Modifier) {
     val c = if (mf) Color.White else Sun
     val shape = RoundedCornerShape(50)
     Box(
-        modifier.shadow(10.dp, shape, ambientColor = c, spotColor = c).clip(shape)
-            .background(Color.Black.copy(alpha = 0.6f)).border(2.5.dp, c, shape)
+        modifier.shadow(10.dp, shape, ambientColor = c, spotColor = c)
+            .acrylic(shape, Color.Black, 0.55f, edge = false).border(2.5.dp, c, shape)
             .tap(onClick).padding(horizontal = 14.dp, vertical = 6.dp)
     ) {
         Text(if (mf) "MF" else "AF", color = c, fontSize = 15.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.5.sp)
@@ -869,7 +877,7 @@ fun FocusRuler(pos: Float, label: String, onChange: (Float) -> Unit, h: Haptics,
     val change by rememberUpdatedState(onChange)
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         Canvas(
-            Modifier.size(230.dp, 34.dp).clip(RoundedCornerShape(50)).background(Color.Black.copy(alpha = 0.42f))
+            Modifier.size(230.dp, 34.dp).acrylic(RoundedCornerShape(50), Color.Black, 0.45f)
                 .pointerInput(Unit) {
                     detectHorizontalDragGestures { c, dx ->
                         c.consume()
@@ -896,7 +904,7 @@ fun FocusRuler(pos: Float, label: String, onChange: (Float) -> Unit, h: Haptics,
 
 @Composable
 fun Histogram(bins: FloatArray, modifier: Modifier) {
-    Canvas(modifier.size(100.dp, 46.dp).clip(RoundedCornerShape(10.dp)).background(Color.Black.copy(alpha = 0.42f))) {
+    Canvas(modifier.size(100.dp, 46.dp).acrylic(RoundedCornerShape(10.dp), Color.Black, 0.45f)) {
         val n = bins.size
         val bw = size.width / n
         bins.forEachIndexed { i, v ->

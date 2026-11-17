@@ -176,7 +176,7 @@ fun BurstPicker(frames: List<Uri>, onClose: () -> Unit, onChanged: () -> Unit) {
             contentAlignment = Alignment.Center,
         ) {
             Column(
-                Modifier.padding(32.dp).clip(RoundedCornerShape(26.dp)).background(Color(0xFF1C1C1E)).padding(22.dp),
+                Modifier.padding(32.dp).acrylic(RoundedCornerShape(26.dp), Color(0xFF1C1C1E), 0.82f).padding(22.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Text(

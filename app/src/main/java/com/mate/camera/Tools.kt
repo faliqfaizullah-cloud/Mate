@@ -52,7 +52,7 @@ fun ToolsSheet(
 ) {
     val tabs = listOf("Filters", "Exposure", "Grid", "Pro", "More")
     Column(
-        modifier.clip(RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp)).background(SheetBg)
+        modifier.acrylic(RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp), Color(0xFF1C1C1E), 0.76f)
             .navigationBarsPadding().padding(horizontal = 20.dp).padding(top = 10.dp, bottom = 18.dp)
     ) {
         Box(
@@ -236,7 +236,7 @@ fun ChipRow(content: @Composable () -> Unit) =
 @Composable
 fun Chip(label: String, selected: Boolean, onClick: () -> Unit) {
     Box(
-        Modifier.clip(RoundedCornerShape(50)).background(if (selected) Mint else Color(0xFF2C2C2E))
+        Modifier.then(if (selected) Modifier.clip(RoundedCornerShape(50)).background(Mint) else Modifier.acrylic(RoundedCornerShape(50), Color.White, 0.12f, 0.05f))
             .tap(onClick).padding(horizontal = 16.dp, vertical = 9.dp)
     ) {
         Text(label, color = if (selected) Color.Black else Color.White, fontSize = 14.sp, fontWeight = FontWeight.Medium)
@@ -253,7 +253,7 @@ fun sliderColors() = SliderDefaults.colors(
 @Composable
 fun ModePill(video: Boolean, onChange: (Boolean) -> Unit, modifier: Modifier) {
     val shape = RoundedCornerShape(50)
-    Row(modifier.clip(shape).background(Color.Black.copy(alpha = 0.42f)).padding(4.dp)) {
+    Row(modifier.acrylic(shape, Color.Black, 0.45f).padding(4.dp)) {
         listOf("PHOTO" to false, "VIDEO" to true).forEach { (label, isVideo) ->
             val sel = video == isVideo
             Box(
@@ -269,7 +269,7 @@ fun ModePill(video: Boolean, onChange: (Boolean) -> Unit, modifier: Modifier) {
 @Composable
 fun RecPill(seconds: Int, modifier: Modifier) {
     Row(
-        modifier.clip(RoundedCornerShape(50)).background(Color.Black.copy(alpha = 0.5f)).padding(horizontal = 14.dp, vertical = 8.dp),
+        modifier.acrylic(RoundedCornerShape(50), Color.Black, 0.5f).padding(horizontal = 14.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(Modifier.size(9.dp).clip(CircleShape).background(Color(0xFFFF3B30)))

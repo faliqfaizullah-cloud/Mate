@@ -216,7 +216,7 @@ fun EditorScreen(uri: Uri, onClose: () -> Unit, onSaved: () -> Unit) {
 
         // tool panel
         Column(
-            Modifier.fillMaxWidth().clip(RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp)).background(Panel)
+            Modifier.fillMaxWidth().acrylic(RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp), Color(0xFF1C1C1E), 0.88f)
                 .navigationBarsPadding().padding(horizontal = 20.dp).padding(top = 6.dp, bottom = 16.dp)
         ) {
             Row(Modifier.fillMaxWidth().padding(vertical = 14.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
